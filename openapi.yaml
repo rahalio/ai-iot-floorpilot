@@ -1,0 +1,624 @@
+openapi: 3.0.3
+info:
+  title: FloorPilot
+  version: 0.1.0
+  description: >-
+    Semi-supervised BLE indoor localization. Mixes sparse confirmed positions with
+    unlabeled RSSI traces to train and serve localization policies with confidence
+    and model governance.
+  x-product-slug: ai-iot-floorpilot
+  x-source: ai-in-iot/1810.04118v1/
+servers:
+  - url: https://api.example.com
+tags:
+  - name: Sites
+  - name: Observations
+  - name: Labels
+  - name: Policies
+  - name: Estimates
+  - name: Reports
+paths:
+  /v1/sites:
+    get:
+      operationId: listSites
+      tags: [Sites]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Sites
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeSite" }
+    post:
+      operationId: createSite
+      tags: [Sites]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SiteCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeSite" }
+  /v1/sites/{siteId}/floors:
+    get:
+      operationId: listFloors
+      tags: [Sites]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Floors
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeFloor" }
+    post:
+      operationId: createFloor
+      tags: [Sites]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FloorCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeFloor" }
+  /v1/sites/{siteId}/beacons:
+    get:
+      operationId: listBeacons
+      tags: [Sites]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema: { type: string }
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+      responses:
+        "200":
+          description: Beacons
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopeBeacon" }
+    post:
+      operationId: upsertBeacon
+      tags: [Sites]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      parameters:
+        - name: siteId
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/BeaconUpsert" }
+      responses:
+        "200":
+          description: Upserted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeBeacon" }
+  /v1/observations:
+    post:
+      operationId: ingestObservations
+      tags: [Observations]
+      security: [{ ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ObservationBatchCreate" }
+      responses:
+        "202":
+          description: Accepted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeObservationBatch" }
+  /v1/labels:
+    get:
+      operationId: listPositionLabels
+      tags: [Labels]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: siteId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Labels
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopePositionLabel" }
+    post:
+      operationId: createPositionLabel
+      tags: [Labels]
+      security: [{ BearerAuth: [] }, { ApiKeyAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PositionLabelCreate" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopePositionLabel" }
+  /v1/policies:
+    get:
+      operationId: listPolicyModels
+      tags: [Policies]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - $ref: "#/components/parameters/Cursor"
+        - $ref: "#/components/parameters/Limit"
+        - name: siteId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Policies
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ListEnvelopePolicyModel" }
+    post:
+      operationId: trainPolicyModel
+      tags: [Policies]
+      security: [{ BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PolicyTrainRequest" }
+      responses:
+        "202":
+          description: Training started
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopePolicyModel" }
+  /v1/policies/{policyId}/promote:
+    post:
+      operationId: promotePolicyModel
+      tags: [Policies]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: policyId
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Promoted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopePolicyModel" }
+        "422":
+          $ref: "#/components/responses/UnprocessableEntity"
+  /v1/estimates:
+    post:
+      operationId: estimateLocation
+      tags: [Estimates]
+      security: [{ ApiKeyAuth: [] }, { BearerAuth: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/EstimateRequest" }
+      responses:
+        "200":
+          description: Estimate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeLocalizationEstimate" }
+  /v1/reports/accuracy:
+    get:
+      operationId: getAccuracyReport
+      tags: [Reports]
+      security: [{ BearerAuth: [] }]
+      parameters:
+        - name: siteId
+          in: query
+          required: true
+          schema: { type: string }
+        - name: policyId
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: Accuracy report
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DataEnvelopeAccuracyReport" }
+components:
+
+  securitySchemes:
+    ApiKeyAuth:
+      type: apiKey
+      in: header
+      name: X-API-Key
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+
+    Cursor:
+      name: cursor
+      in: query
+      schema: { type: string }
+    Limit:
+      name: limit
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+
+  responses:
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    NotFound:
+      description: Not found
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+    UnprocessableEntity:
+      description: Unprocessable entity
+      content:
+        application/problem+json:
+          schema: { $ref: "#/components/schemas/Problem" }
+
+  schemas:
+
+    ResponseMeta:
+      type: object
+      required: [requestId, timestamp]
+      properties:
+        requestId: { type: string }
+        timestamp: { type: string, format: date-time }
+    Problem:
+      type: object
+      required: [type, title, status]
+      properties:
+        type: { type: string, format: uri }
+        title: { type: string }
+        status: { type: integer }
+        detail: { type: string }
+
+    Site:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        unlabeledAdmissionEnabled: { type: boolean }
+    SiteCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    Floor:
+      type: object
+      required: [id, siteId, name]
+      properties:
+        id: { type: string }
+        siteId: { type: string }
+        name: { type: string }
+        level: { type: integer }
+    FloorCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        level: { type: integer }
+    Beacon:
+      type: object
+      required: [id, siteId, floorId, status]
+      properties:
+        id: { type: string }
+        siteId: { type: string }
+        floorId: { type: string }
+        hardwareId: { type: string }
+        x: { type: number }
+        y: { type: number }
+        status: { type: string, enum: [active, offline, relocated] }
+    BeaconUpsert:
+      type: object
+      required: [floorId, hardwareId]
+      properties:
+        floorId: { type: string }
+        hardwareId: { type: string }
+        x: { type: number }
+        y: { type: number }
+        status: { type: string, enum: [active, offline, relocated] }
+    ObservationBatch:
+      type: object
+      required: [id, siteId, count]
+      properties:
+        id: { type: string }
+        siteId: { type: string }
+        count: { type: integer }
+        unlabeled: { type: boolean }
+    ObservationBatchCreate:
+      type: object
+      required: [siteId, samples]
+      properties:
+        siteId: { type: string }
+        unlabeled: { type: boolean, default: true }
+        purpose: { type: string, enum: [wayfinding, marketing, evacuation] }
+        samples:
+          type: array
+          items:
+            type: object
+            required: [devicePseudonym, rssiByBeacon]
+            properties:
+              devicePseudonym: { type: string }
+              capturedAt: { type: string, format: date-time }
+              rssiByBeacon:
+                type: object
+                additionalProperties: { type: number }
+    PositionLabel:
+      type: object
+      required: [id, siteId, floorId]
+      properties:
+        id: { type: string }
+        siteId: { type: string }
+        floorId: { type: string }
+        devicePseudonym: { type: string }
+        gridCell: { type: string }
+        confirmedAt: { type: string, format: date-time }
+    PositionLabelCreate:
+      type: object
+      required: [siteId, floorId, gridCell]
+      properties:
+        siteId: { type: string }
+        floorId: { type: string }
+        devicePseudonym: { type: string }
+        gridCell: { type: string }
+        confirmedAt: { type: string, format: date-time }
+    PolicyModel:
+      type: object
+      required: [id, siteId, status]
+      properties:
+        id: { type: string }
+        siteId: { type: string }
+        status: { type: string, enum: [training, frozen, ready, promoted, rolled_back] }
+        labeledCount: { type: integer }
+        unlabeledCount: { type: integer }
+        medianErrorMeters: { type: number }
+        supervisedBaselineErrorMeters: { type: number }
+    PolicyTrainRequest:
+      type: object
+      required: [siteId]
+      properties:
+        siteId: { type: string }
+        admitUnlabeled: { type: boolean, default: true }
+        epochs: { type: integer }
+    EstimateRequest:
+      type: object
+      required: [siteId, rssiByBeacon]
+      properties:
+        siteId: { type: string }
+        devicePseudonym: { type: string }
+        rssiByBeacon:
+          type: object
+          additionalProperties: { type: number }
+    LocalizationEstimate:
+      type: object
+      required: [siteId, floorId, confidence]
+      properties:
+        siteId: { type: string }
+        floorId: { type: string }
+        zoneId: { type: string }
+        x: { type: number }
+        y: { type: number }
+        confidence: { type: number }
+        policyId: { type: string }
+        belowSla: { type: boolean }
+    AccuracyReport:
+      type: object
+      required: [siteId, medianErrorMeters, p95ErrorMeters]
+      properties:
+        siteId: { type: string }
+        policyId: { type: string }
+        medianErrorMeters: { type: number }
+        p95ErrorMeters: { type: number }
+        supervisedBaselineMedian: { type: number }
+        rewardTotal: { type: number }
+
+    DataEnvelopeSite:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/Site" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeSite:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Site" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeFloor:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/Floor" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeFloor:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Floor" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeBeacon:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/Beacon" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeBeacon:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/Beacon" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeObservationBatch:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/ObservationBatch" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeObservationBatch:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/ObservationBatch" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopePositionLabel:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/PositionLabel" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopePositionLabel:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/PositionLabel" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopePolicyModel:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/PolicyModel" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopePolicyModel:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/PolicyModel" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeLocalizationEstimate:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/LocalizationEstimate" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeLocalizationEstimate:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/LocalizationEstimate" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
+
+    DataEnvelopeAccuracyReport:
+      type: object
+      required: [data, meta]
+      properties:
+        data: { $ref: "#/components/schemas/AccuracyReport" }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+    ListEnvelopeAccuracyReport:
+      type: object
+      required: [data, meta]
+      properties:
+        data:
+          type: object
+          required: [items]
+          properties:
+            items:
+              type: array
+              items: { $ref: "#/components/schemas/AccuracyReport" }
+            nextCursor: { type: string }
+        meta: { $ref: "#/components/schemas/ResponseMeta" }
+
